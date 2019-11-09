@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 import threading
@@ -6,8 +7,10 @@ import pyautogui
 from pydub import AudioSegment
 from pydub.playback import play
 
-import controller as launchpad
 import time
+
+from lp import launchpad
+from lp.obs_websocket import OBS
 
 KEY_UP = 0
 KEY_DOWN = 127
@@ -22,12 +25,15 @@ class Launchpad(object):
         self.lp = launchpad.Launchpad()
         self.lp.open()
 
+        self.obs = OBS(config)
+
         self.config = config
         self.buttons = {}
 
         self.actions = {
             'keyboard': self.keyboard_press,
-            'sound': self.play_sound
+            'sound': self.play_sound,
+            'obs': self.obs_websocket
         }
 
         if self.lp.id_in:
@@ -37,19 +43,20 @@ class Launchpad(object):
 
         self.bind_buttons()
 
-    def keyboard_press(self, keys):
-        key_list = keys.split('+')
-        thread = threading.Thread(target=pyautogui.hotkey, args=key_list, kwargs={'interval': 0.05})
-        thread.start()
-        # for key in keys.split(','):
-        #     key_list = list(map(str.lower, key.split('+')))
+    @staticmethod
+    def keyboard_press(keys):
+        threading.Thread(target=pyautogui.hotkey, args=keys, kwargs={'interval': 0.05}).start()
 
-    def play_sound(self, path=None, volume=0):
+    @staticmethod
+    def play_sound(path=None, volume=0):
         song = AudioSegment.from_mp3(path)
-        thread = threading.Thread(target=play, args=[song + volume])
-        thread.start()
+        threading.Thread(target=play, args=[song + volume]).start()
 
-    def get_key_info(self, data):
+    def obs_websocket(self, request, **kwargs):
+        threading.Thread(target=getattr(self.obs, request), kwargs=kwargs).start()
+
+    @staticmethod
+    def get_key_info(data):
         logging.debug(data)
         y = int(data[1] / 16) + 1
         x = data[1] % 16
@@ -81,11 +88,12 @@ class Launchpad(object):
             self.process_action(action)
 
     def process_action(self, action):
-        action_key = list(action.keys())[0]
-        if action_key in self.actions:
-            self.actions[action_key](**action[action_key])
+        action_keys = list(action.keys())
+        for action_key in action_keys:
+            if action_key in self.actions:
+                self.actions[action_key](**action[action_key])
 
-    def reading(self):
+    def read(self):
         while True:
             data = self.lp.midi.read_raw()
             if data:
@@ -104,10 +112,6 @@ class Launchpad(object):
             self.buttons[(x, y)] = {'red': red, 'green': green, 'action': action}
             self.lp.led_ctrl_xy(x, y, red, green)
 
-    def read_thread(self):
-        self.reading_thread = threading.Thread(target=self.reading, daemon=True)
-        self.reading_thread.start()
-
     def bind_buttons(self):
         for button, config in self.config['buttons'].items():
             x, y = button.split(':')
@@ -119,5 +123,4 @@ class Launchpad(object):
 
 def init_launchpad(config):
     lp = Launchpad(config)
-    lp.read_thread()
-    return lp
+    lp.read()

@@ -4,7 +4,9 @@ import os
 import sys
 from time import sleep
 
+import dotmap
 import yaml
+import asyncio
 
 from gui.init import init_gui
 from lp.init import init_launchpad
@@ -37,6 +39,7 @@ def setup_logger():
     console_handler.setFormatter(LOG_FORMAT)
     root_logger.addHandler(console_handler)
     logging.getLogger('requests').setLevel(logging.ERROR)
+    # logging.getLogger('obswebsocket.core').setLevel(logging.ERROR)
 
 
 def load_config():
@@ -49,7 +52,7 @@ if __name__ == '__main__':
 
     log = logging.getLogger('main')
 
-    config = load_config()
+    config = dotmap.DotMap(load_config())
     lp = init_launchpad(config)
     gui = init_gui(config)
     try:

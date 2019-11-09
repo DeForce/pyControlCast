@@ -16,7 +16,7 @@ import sys
 #         sys.exit(app.exec_())
 
 
-def init_gui(config):
+async def init_gui(config):
     pass
     # gui = ControlCastGui()
     # gui.start()

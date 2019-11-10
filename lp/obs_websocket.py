@@ -3,6 +3,8 @@ import time
 import pyobs
 import pyobs.requests as req
 
+from lp import requests
+
 
 class OBS(object):
     def __init__(self, config):
@@ -27,13 +29,10 @@ class OBS(object):
         time.sleep(timeout)
         self.client.call(req.SetSceneItemProperties(source, visible=False, scene_name=current_scene))
 
-    def scale_up(self, source):
+    def scale(self, source, percent_x, percent_y):
         current_scene = self.client.call(req.GetCurrentScene()).name
         current_item = self.client.call(req.GetSceneItemProperties(source))
-        scale_x = current_item._returns['scale']['x'] + 0.2
-        scale_y = current_item._returns['scale']['y'] + 0.2
-        self.client.call(req.SetSceneItemProperties(source, x_scale=scale_x, y_scale=scale_y, scene_name=current_scene,
-                                                   rotation=None))
-
-    def scale_down(self, source):
-        pass
+        scale_x = current_item._returns['scale']['x'] * (1 + (percent_x / 100))
+        scale_y = current_item._returns['scale']['y'] * (1 + (percent_y / 100))
+        self.client.call(requests.SetSceneItemProperties(
+            source, scale_x=scale_x, scale_y=scale_y, scene_name=current_scene))

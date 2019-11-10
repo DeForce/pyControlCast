@@ -47,10 +47,20 @@ class Launchpad(object):
     def keyboard_press(keys):
         threading.Thread(target=pyautogui.hotkey, args=keys, kwargs={'interval': 0.05}).start()
 
+    def play_sound(self, path=None, volume=0, delay=0):
+        if isinstance(path, str):
+            path = [path]
+        if isinstance(volume, int):
+            volume = [volume]
+        threading.Thread(target=self.play_sounds_thread, args=[path, volume, delay]).start()
+
     @staticmethod
-    def play_sound(path=None, volume=0):
-        song = AudioSegment.from_mp3(path)
-        threading.Thread(target=play, args=[song + volume]).start()
+    def play_sounds_thread(paths, volumes, delay):
+        if delay:
+            time.sleep(delay)
+        for path, volume in zip(paths, volumes):
+            song = AudioSegment.from_mp3(path)
+            play(song + volume)
 
     def obs_websocket(self, request, **kwargs):
         threading.Thread(target=getattr(self.obs, request), kwargs=kwargs).start()
@@ -87,11 +97,11 @@ class Launchpad(object):
         if action:
             self.process_action(action)
 
-    def process_action(self, action):
-        action_keys = list(action.keys())
-        for action_key in action_keys:
-            if action_key in self.actions:
-                self.actions[action_key](**action[action_key])
+    def process_action(self, actions):
+        for action_key in actions:
+            action, config = list(action_key.items())[0]
+            if action in self.actions:
+                self.actions[action](**config)
 
     def read(self):
         while True:

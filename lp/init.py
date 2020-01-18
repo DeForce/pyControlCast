@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import random
 import threading
@@ -17,7 +16,6 @@ KEY_DOWN = 127
 
 
 # ffmpeg: -loglevel panic -hide_banner -nostats
-# TODO: OBS Plugin
 class Launchpad(object):
     def __init__(self, config):
         self.reading_thread = None
@@ -25,7 +23,7 @@ class Launchpad(object):
         self.lp = launchpad.Launchpad()
         self.lp.open()
 
-        self.obs = OBS(config)
+        self.obs = None
 
         self.config = config
         self.buttons = {}
@@ -42,6 +40,7 @@ class Launchpad(object):
             Exception('Unable to connect to MIDI controller')
 
         self.bind_buttons()
+        threading.Thread(target=self.setup_obs, daemon=True).start()
 
     @staticmethod
     def keyboard_press(keys):
@@ -63,7 +62,8 @@ class Launchpad(object):
             play(song + volume)
 
     def obs_websocket(self, request, **kwargs):
-        threading.Thread(target=getattr(self.obs, request), kwargs=kwargs).start()
+        if self.obs:
+            threading.Thread(target=getattr(self.obs, request), kwargs=kwargs).start()
 
     @staticmethod
     def get_key_info(data):
@@ -130,7 +130,17 @@ class Launchpad(object):
             action = config['action']
             self.configure_button(int(x), int(y), int(red), int(green), action)
 
+    def setup_obs(self):
+        while True:
+            try:
+                self.obs = OBS(self.config)
+                break
+            except:
+                logging.info('Unable to connect to OBS, check your settings')
+                time.sleep(5)
+
 
 def init_launchpad(config):
     lp = Launchpad(config)
-    lp.read()
+    threading.Thread(target=lp.read, daemon=True).start()
+    return lp

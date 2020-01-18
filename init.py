@@ -6,7 +6,6 @@ from time import sleep
 
 import dotmap
 import yaml
-import asyncio
 
 from gui.init import init_gui
 from lp.init import init_launchpad

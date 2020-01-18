@@ -1,0 +1,6 @@
+wxPython
+PyYAML
+dotmap
+pyobs
+pydub
+pyautogui

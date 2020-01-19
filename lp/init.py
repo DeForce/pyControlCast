@@ -39,7 +39,7 @@ class Launchpad(object):
         else:
             Exception('Unable to connect to MIDI controller')
 
-        self.bind_buttons()
+        self.bind_buttons(self.config.active_profile)
         threading.Thread(target=self.setup_obs, daemon=True).start()
 
     @staticmethod
@@ -65,19 +65,23 @@ class Launchpad(object):
         if self.obs:
             threading.Thread(target=getattr(self.obs, request), kwargs=kwargs).start()
 
+    def switch_profile(self, profile):
+        pass
+
     @staticmethod
     def get_key_info(data):
         logging.debug(data)
-        y = int(data[1] / 16) + 1
-        x = data[1] % 16
+        y = (data[1] // 16)
+        x = (data[1] % 16)
 
         if data[0] == 176:
-            y = y - 1
+            y = y - 7
+            x = x - 8
 
         return {
-            'is_pressed': True if data[2] == KEY_DOWN else False,
-            'pos': (x, y),  # X, Y,
-            'automap': True if data[0] == 176 else False
+            'is_pressed': data[2] == KEY_DOWN or False,
+            'pos': (x, y),
+            'automap': data[0] == 176 or False
         }
 
     def set_key_data(self, data):
@@ -92,9 +96,10 @@ class Launchpad(object):
         if not data['is_pressed']:
             return
         action = self.buttons.get(data['pos'], {}).get('action', {})
-        logging.info(f'Processing button {data["pos"]}, action:{action}')
+        logging.info(f'Processing button {data["pos"]}, action: {action}, automap: {data["automap"]}')
 
         if action:
+            return
             self.process_action(action)
 
     def process_action(self, actions):
@@ -107,7 +112,7 @@ class Launchpad(object):
         while True:
             data = self.lp.midi.read_raw()
             if data:
-                key_data = self.get_key_info(data[0])
+                key_data = self.get_key_info(data)
                 logging.debug(key_data)
                 if key_data['is_pressed']:
                     self.process_key(key_data)
@@ -122,9 +127,15 @@ class Launchpad(object):
             self.buttons[(x, y)] = {'red': red, 'green': green, 'action': action}
             self.lp.led_ctrl_xy(x, y, red, green)
 
-    def bind_buttons(self):
-        for button, config in self.config['buttons'].items():
-            x, y = button.split(':')
+    def bind_buttons(self, profile):
+        for profile_name, profile_item in self.config.profiles.items():
+            if self.config.active_profile == profile_name:
+                self.configure_button(int(profile_item.order), -1, 3, 0, 'switch_profile')
+            else:
+                self.configure_button(int(profile_item.order), -1, 0, 3, 'switch_profile')
+
+        for button, config in self.config.profiles[profile]['buttons'].items():
+            x, y = button.split('.')
             red = config['color']['red']
             green = config['color']['green']
             action = config['action']

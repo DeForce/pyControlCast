@@ -1,17 +1,17 @@
 # A Novation Launchpad control suite for Python.
-# Refactored https://github.com/dhilowitz/launchpad_rtmidi.py to support Python3 and PEP8
+# Refactored https://github.com/dhilowitz/launchpad_rtmidi2.py to support Python3 and PEP8
 #
 import logging
 import time
 
-import rtmidi
+import rtmidi2
 
 log = logging.getLogger()
 
 
 def search_input_devices(name, quiet=True):
-    midi = rtmidi.MidiIn()
-    for index,  port in enumerate(midi.get_ports()):
+    midi = rtmidi2.MidiIn()
+    for index, port in enumerate(midi.ports):
         if not quiet:
             log.info(f'{port}, 1, 0)')
         if port.lower().find(name.lower()) >= 0:
@@ -19,8 +19,8 @@ def search_input_devices(name, quiet=True):
 
 
 def search_output_devices(name, quiet=True):
-    midi = rtmidi.MidiOut()
-    for index,  port in enumerate(midi.get_ports()):
+    midi = rtmidi2.MidiOut()
+    for index, port in enumerate(midi.ports):
         if not quiet:
             log.info(f'{port}, 1, 0)')
         if port.lower().find(name.lower()) >= 0:
@@ -29,13 +29,13 @@ def search_output_devices(name, quiet=True):
 
 class Midi(object):
     def __init__(self):
-        self.dev_in = None
-        self.dev_out = None
+        self.dev_in: rtmidi2.MidiIn = None
+        self.dev_out: rtmidi2.MidiOut = None
 
     def open_output(self, midi_id):
         if self.dev_out is None:
             try:
-                self.dev_out = rtmidi.MidiOut()
+                self.dev_out = rtmidi2.MidiOut()
                 self.dev_out.open_port(midi_id)
             except:
                 return False
@@ -49,7 +49,7 @@ class Midi(object):
     def open_input(self, midi_id):
         if self.dev_in is None:
             try:
-                self.dev_in = rtmidi.MidiIn()
+                self.dev_in = rtmidi2.MidiIn()
                 self.dev_in.open_port(midi_id)
             except:
                 return False
@@ -60,24 +60,14 @@ class Midi(object):
             self.dev_in.close_port()
             self.dev_in = None
 
-    def read_raw(self, block=False):
-        if block:
-            msg = self.dev_in
-            while msg == (None, None):
-                time.sleep(0.001)
-            return msg
-        else:
-            msg = self.dev_in.get_message()
-            if msg != (None, None):
-                return msg
-            else:
-                return None
+    def read_raw(self):
+        return self.dev_in.get_message()
 
     def raw_write(self, stat, dat1, dat2):
         """
         Sends a single, short message
         """
-        self.dev_out.send_message([stat, dat1, dat2])
+        self.dev_out.send_raw(stat, dat1, dat2)
 
     def raw_write_multi(self, messages_list):
         """
@@ -280,14 +270,14 @@ class Launchpad(LaunchpadBase):
         Controls a grid LED by its coordinates <x> and <y>  with <green/red> brightness 0..3
         """
 
-        if x < 0 or x > 8 or y < 0 or y > 8:
+        if x < 0 or x > 8 or y < -1 or y > 8:
             return
 
-        if y == 0:
+        if y == -1:
             self.led_ctrl_automap(x, red, green)
 
         else:
-            self.led_ctrl_raw(((y - 1) << 4) | x, red, green)
+            self.led_ctrl_raw((y << 4) | x, red, green)
 
     def led_ctrl_raw_rapid(self, all_leds):
         """

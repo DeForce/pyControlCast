@@ -2,6 +2,8 @@ import logging
 
 import wx
 
+from controls import ControlSound, Control
+
 log = logging.getLogger('main')
 
 GRID_SIZE = 8
@@ -10,6 +12,7 @@ AUTOMAP_ROW = -1
 
 
 TYPES_MAP = {
+    'sound': ControlSound
 }
 
 
@@ -126,7 +129,13 @@ class LPItem(wx.Panel):
             self.sizer.Remove(index)
 
         for name, properties in action.items():
+            if name not in TYPES_MAP:
+                continue
+
             static_box = wx.StaticBoxSizer(wx.VERTICAL, self, label=name)
+            control_class: Control = TYPES_MAP.get(name)(self, static_box, properties)
+            control_class.create_layout()
+
             self.sizer.Add(static_box)
         self.main_sizer.Fit(self)
         self.main_sizer.Layout()

@@ -99,7 +99,7 @@ class Launchpad(object):
         logging.info(f'Processing button {data["pos"]}, action: {action}, automap: {data["automap"]}')
 
         if action:
-            return
+            # return
             self.process_action(action)
 
     def process_action(self, actions):
